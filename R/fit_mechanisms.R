@@ -6,7 +6,7 @@
 #'  {A - delta}, {A + delta}, and {A + 2 * delta}).
 #'
 #' @param A A \code{numeric} vector of observed exposure values.
-#' @param W A \code{numeric} matrix of observed baseline covariate values.
+#' @param W_g A \code{numeric} matrix of observed baseline covariate values for estimating g.
 #' @param delta A \code{numeric} value identifying a shift in the observed
 #'  value of the exposure under which observations are to be evaluated.
 #' @param samp_weights A \code{numeric} vector of observation-level sampling
@@ -32,7 +32,7 @@
 #'  (g(A | W)), an upshift (g(A + delta) | W), and an upshift of magnitude two
 #'  (g(A + 2 delta) | W).
 est_g_exp <- function(A,
-                      W,
+                      W_g,
                       delta = 0,
                       samp_weights = rep(1, length(A)),
                       fit_type = c("hal", "sl"),
@@ -51,6 +51,8 @@ est_g_exp <- function(A,
       )
     )
   }
+  
+  W <- W_g
 
   # make data objects from inputs
   data_in <- data.table::as.data.table(cbind(A, W))
@@ -335,6 +337,7 @@ est_g_cens <- function(C_cens,
 #'  for fitting a (generalized) linear model via \code{\link[stats]{glm}}.
 #' @param sl_learners Object containing a set of instantiated learners from the
 #'  \pkg{sl3}, to be used in fitting an ensemble model.
+#' @param glm_family The family to be used for glm estimation of Q.
 #'
 #' @importFrom stats glm as.formula predict
 #' @importFrom data.table as.data.table setnames copy set
@@ -366,7 +369,7 @@ est_Q <- function(Y,
   }
 
   # scale the outcome for logit transform
-  # don't do this before prediction
+  # don't scale before prediction
   #y_star <- scale_to_unit(vals = Y)
 
   # generate the data objects for fitting the outcome regression
@@ -434,14 +437,12 @@ est_Q <- function(Y,
       data = data_in[C_cens == 1, ],
       covariates = c("C_cens", "A", names_W),
       outcome = "Y",
-      #outcome_type = "quasibinomial",
       weights = "ipc_weights"
     )
     task_noshift_nocens <- sl3::sl3_Task$new(
       data = data_in[, C_cens := 1],
       covariates = c("C_cens", "A", names_W),
       outcome = "Y",
-      #outcome_type = "quasibinomial",
       weights = "ipc_weights"
     )
 
@@ -450,7 +451,6 @@ est_Q <- function(Y,
       data = data_in_shifted,
       covariates = c("C_cens", "A", names_W),
       outcome = "Y",
-      #outcome_type = "quasibinomial",
       weights = "ipc_weights"
     )
 
